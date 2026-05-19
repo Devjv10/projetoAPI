@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { products } from "../data/products";
+import { ProdutoCacheService } from "../infrastructure/cache/ProdutoCacheService";
 import { Product } from "../models/Product";
 
 type ProductPayload = Omit<Product, "id">;
+const produtoCacheService = new ProdutoCacheService();
 
 const getProductId = (idParam: string): number | null => {
   const productId = Number(idParam);
@@ -18,7 +20,7 @@ const isValidProductPayload = (body: Partial<Product>): body is ProductPayload =
   );
 };
 
-export const createProduct = (req: Request, res: Response): void => {
+export const createProduct = async (req: Request, res: Response): Promise<void> => {
   const productData = req.body as Partial<Product>;
 
   if (!isValidProductPayload(productData)) {
@@ -37,14 +39,30 @@ export const createProduct = (req: Request, res: Response): void => {
   };
 
   products.push(newProduct);
+  await produtoCacheService.invalidateAsync("produto:lista:*");
   res.status(201).json(newProduct);
 };
 
-export const getAllProducts = (_req: Request, res: Response): void => {
+export const getAllProducts = async (_req: Request, res: Response): Promise<void> => {
+  const startedAt = Date.now();
+  const cacheKey = "produto:lista:todos";
+  const cachedProducts = await produtoCacheService.getAsync(cacheKey);
+
+  if (cachedProducts) {
+    const elapsedMs = Date.now() - startedAt;
+    produtoCacheService.recordHit(elapsedMs);
+    console.log(`Cache HIT key=${cacheKey}`);
+    res.status(200).json(cachedProducts);
+    return;
+  }
+
+  console.log(`Cache MISS key=${cacheKey}`);
+  await produtoCacheService.setAsync(cacheKey, products);
+  produtoCacheService.recordMiss(Date.now() - startedAt);
   res.status(200).json(products);
 };
 
-export const getProductById = (req: Request, res: Response): void => {
+export const getProductById = async (req: Request, res: Response): Promise<void> => {
   const productId = getProductId(String(req.params.id));
 
   if (productId === null) {
@@ -52,6 +70,18 @@ export const getProductById = (req: Request, res: Response): void => {
     return;
   }
 
+  const startedAt = Date.now();
+  const cacheKey = `produto:item:${productId}`;
+  const cachedProduct = await produtoCacheService.getAsync(cacheKey);
+
+  if (cachedProduct && !Array.isArray(cachedProduct)) {
+    produtoCacheService.recordHit(Date.now() - startedAt);
+    console.log(`Cache HIT key=${cacheKey}`);
+    res.status(200).json(cachedProduct);
+    return;
+  }
+
+  console.log(`Cache MISS key=${cacheKey}`);
   const product = products.find((item) => item.id === productId);
 
   if (!product) {
@@ -59,10 +89,12 @@ export const getProductById = (req: Request, res: Response): void => {
     return;
   }
 
+  await produtoCacheService.setAsync(cacheKey, product);
+  produtoCacheService.recordMiss(Date.now() - startedAt);
   res.status(200).json(product);
 };
 
-export const updateProduct = (req: Request, res: Response): void => {
+export const updateProduct = async (req: Request, res: Response): Promise<void> => {
   const productId = getProductId(String(req.params.id));
   const productData = req.body as Partial<Product>;
 
@@ -94,10 +126,12 @@ export const updateProduct = (req: Request, res: Response): void => {
   };
 
   products[productIndex] = updatedProduct;
+  await produtoCacheService.invalidateAsync(`produto:item:${productId}`);
+  await produtoCacheService.invalidateAsync("produto:lista:*");
   res.status(200).json(updatedProduct);
 };
 
-export const deleteProduct = (req: Request, res: Response): void => {
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
   const productId = getProductId(String(req.params.id));
 
   if (productId === null) {
@@ -113,5 +147,11 @@ export const deleteProduct = (req: Request, res: Response): void => {
   }
 
   products.splice(productIndex, 1);
+  await produtoCacheService.invalidateAsync(`produto:item:${productId}`);
+  await produtoCacheService.invalidateAsync("produto:lista:*");
   res.status(200).json({ message: "Produto removido com sucesso." });
+};
+
+export const getProductCacheStats = async (_req: Request, res: Response): Promise<void> => {
+  res.status(200).json(await produtoCacheService.getStatsAsync());
 };

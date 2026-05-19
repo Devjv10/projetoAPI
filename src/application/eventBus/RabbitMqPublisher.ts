@@ -1,5 +1,6 @@
 import { createRequire } from "module";
 import { PedidoCriadoEvent } from "../../domain/events/PedidoCriadoEvent";
+import { PedidoStatusAlteradoEvent } from "../../domain/events/PedidoStatusAlteradoEvent";
 
 const dynamicRequire = createRequire(__filename);
 
@@ -28,6 +29,14 @@ export class RabbitMqPublisher {
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || "gestao-pedidos";
 
   async publishPedidoCriado(event: PedidoCriadoEvent): Promise<void> {
+    await this.publish("pedido.criado", event, event.messageId);
+  }
+
+  async publishPedidoStatusAlterado(event: PedidoStatusAlteradoEvent): Promise<void> {
+    await this.publish("pedido.status-alterado", event, event.messageId);
+  }
+
+  private async publish(routingKey: string, event: unknown, messageId: string): Promise<void> {
     const amqp = this.loadAmqp();
 
     if (!amqp) {
@@ -41,11 +50,11 @@ export class RabbitMqPublisher {
       await channel.assertExchange(this.exchange, "topic", { durable: true });
       channel.publish(
         this.exchange,
-        "pedido.criado",
+        routingKey,
         Buffer.from(JSON.stringify(event)),
         {
           persistent: true,
-          messageId: event.messageId,
+          messageId,
           contentType: "application/json"
         }
       );

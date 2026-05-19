@@ -4,6 +4,7 @@ import {
   deleteProduct,
   getAllProducts,
   getProductById,
+  getProductCacheStats,
   updateProduct
 } from "../controllers/productController";
 
@@ -64,6 +65,7 @@ const router = Router();
  */
 router.post("/", createProduct);
 router.get("/", getAllProducts);
+router.get("/cache/stats", getProductCacheStats);
 
 /**
  * @swagger

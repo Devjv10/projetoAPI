@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  atualizarStatusPedido,
   criarPedido,
   listarPedidosCliente,
   obterPedidoPorId,
@@ -121,6 +122,7 @@ router.get("/", listarPedidosCliente);
  *         description: Pedido nao encontrado
  */
 router.get("/:id/status", obterStatusPedido);
+router.put("/:id/status", atualizarStatusPedido);
 
 /**
  * @swagger

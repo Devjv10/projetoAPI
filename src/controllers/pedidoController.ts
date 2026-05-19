@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { AtualizarStatusPedidoCommandHandler } from "../application/Commands/AtualizarStatusPedido/AtualizarStatusPedidoCommandHandler";
 import { CriarPedidoCommandHandler } from "../application/Commands/CriarPedido/CriarPedidoCommandHandler";
 import { ListarPedidosClienteHandler } from "../application/Queries/ListarPedidosCliente/ListarPedidosClienteHandler";
 import { ObterPedidoPorIdHandler } from "../application/Queries/ObterPedidoPorId/ObterPedidoPorIdHandler";
@@ -6,6 +7,7 @@ import { ObterPedidoStatusHandler } from "../application/Queries/ObterPedidoStat
 import { eventBus } from "../application/eventBus/InMemoryEventBus";
 
 const criarPedidoHandler = new CriarPedidoCommandHandler(eventBus);
+const atualizarStatusPedidoHandler = new AtualizarStatusPedidoCommandHandler(eventBus);
 const obterPedidoPorIdHandler = new ObterPedidoPorIdHandler();
 const listarPedidosClienteHandler = new ListarPedidosClienteHandler();
 const obterPedidoStatusHandler = new ObterPedidoStatusHandler();
@@ -49,4 +51,19 @@ export const obterStatusPedido = async (req: Request, res: Response): Promise<vo
   }
 
   res.status(200).json(status);
+};
+
+export const atualizarStatusPedido = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await atualizarStatusPedidoHandler.handle({
+      pedidoId: String(req.params.id),
+      novoStatus: req.body.novoStatus,
+      observacao: req.body.observacao
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nao foi possivel atualizar o status.";
+    res.status(message === "Pedido nao encontrado." ? 404 : 400).json({ message });
+  }
 };
