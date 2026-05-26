@@ -1,6 +1,7 @@
 import { createRequire } from "module";
 import { PedidoCriadoEvent } from "../../domain/events/PedidoCriadoEvent";
 import { PedidoStatusAlteradoEvent } from "../../domain/events/PedidoStatusAlteradoEvent";
+import { logger } from "../../infrastructure/logging/logger";
 import { PedidoCriadoHandler, PedidoStatusAlteradoHandler } from "./EventBus";
 
 const dynamicRequire = createRequire(__filename);
@@ -95,14 +96,20 @@ export class RabbitMqConsumerHost {
 
         try {
           const event = JSON.parse(message.content.toString()) as PedidoCriadoEvent | PedidoStatusAlteradoEvent;
+          logger.info("Mensagem RabbitMQ recebida", {
+            queue: subscription.queue,
+            routingKey: subscription.routingKey,
+            pedidoId: event.pedidoId,
+            messageId: event.messageId
+          });
           await subscription.handler(event);
           channel.ack(message);
         } catch (error) {
-          console.error(
-            error instanceof Error
-              ? `Falha ao consumir mensagem RabbitMQ: ${error.message}`
-              : "Falha ao consumir mensagem RabbitMQ."
-          );
+          logger.error("Falha ao consumir mensagem RabbitMQ", {
+            queue: subscription.queue,
+            routingKey: subscription.routingKey,
+            error: error instanceof Error ? error.message : "Erro desconhecido"
+          });
           channel.nack(message, false, true);
         }
       });

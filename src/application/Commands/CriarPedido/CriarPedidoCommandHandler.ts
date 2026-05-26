@@ -2,13 +2,17 @@ import { randomUUID } from "crypto";
 import { products } from "../../../data/products";
 import { pedidos } from "../../../data/pedidos";
 import { Pedido } from "../../../models/Pedido";
+import { logger } from "../../../infrastructure/logging/logger";
+import { metricasPedido } from "../../Metrics/MetricasPedido";
 import { EventBus } from "../../eventBus/EventBus";
 import { CriarPedidoCommand } from "./CriarPedidoCommand";
 
 export class CriarPedidoCommandHandler {
   constructor(private readonly eventBus: EventBus) {}
 
-  async handle(command: CriarPedidoCommand): Promise<string> {
+  async handle(command: CriarPedidoCommand, correlationId?: string): Promise<string> {
+    const endTimer = metricasPedido.pedidoCriacaoDuracaoSegundos.startTimer();
+
     this.validate(command);
 
     const pedidoId = randomUUID();
@@ -68,6 +72,18 @@ export class CriarPedidoCommandHandler {
       valorTotal,
       criadoEm,
       itens
+    });
+
+    metricasPedido.pedidosCriadosTotal.inc();
+    metricasPedido.pedidosAtivos.inc();
+    endTimer();
+
+    logger.info("Pedido criado", {
+      correlationId,
+      pedidoId,
+      userId: command.clienteId,
+      valorTotal,
+      status: pedido.status
     });
 
     return pedidoId;

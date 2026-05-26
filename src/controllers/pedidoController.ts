@@ -14,7 +14,7 @@ const obterPedidoStatusHandler = new ObterPedidoStatusHandler();
 
 export const criarPedido = async (req: Request, res: Response): Promise<void> => {
   try {
-    const pedidoId = await criarPedidoHandler.handle(req.body);
+    const pedidoId = await criarPedidoHandler.handle(req.body, req.correlationId);
     res.status(201).json({ pedidoId });
   } catch (error) {
     res.status(400).json({
@@ -59,7 +59,7 @@ export const atualizarStatusPedido = async (req: Request, res: Response): Promis
       pedidoId: String(req.params.id),
       novoStatus: req.body.novoStatus,
       observacao: req.body.observacao
-    });
+    }, req.correlationId);
 
     res.status(204).send();
   } catch (error) {

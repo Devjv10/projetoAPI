@@ -3,6 +3,7 @@ import { pedidos } from "../../../data/pedidos";
 import { pedidosReadModel } from "../../../data/readModels";
 import { PedidoStatus } from "../../../models/Pedido";
 import { PedidoCacheService } from "../../../infrastructure/cache/PedidoCacheService";
+import { logger } from "../../../infrastructure/logging/logger";
 import { EventBus } from "../../eventBus/EventBus";
 import { AtualizarStatusPedidoCommand } from "./AtualizarStatusPedidoCommand";
 
@@ -14,7 +15,7 @@ export class AtualizarStatusPedidoCommandHandler {
     private readonly pedidoCacheService = new PedidoCacheService()
   ) {}
 
-  async handle(command: AtualizarStatusPedidoCommand): Promise<void> {
+  async handle(command: AtualizarStatusPedidoCommand, correlationId?: string): Promise<void> {
     if (!validStatuses.includes(command.novoStatus)) {
       throw new Error("Status de pedido invalido.");
     }
@@ -45,6 +46,15 @@ export class AtualizarStatusPedidoCommandHandler {
       novoStatus: command.novoStatus,
       alteradoEm,
       observacao: command.observacao
+    });
+
+    logger.info("Status do pedido atualizado", {
+      correlationId,
+      pedidoId: command.pedidoId,
+      userId: pedido.clienteId,
+      valorTotal: pedido.valorTotal,
+      status: command.novoStatus,
+      statusAnterior
     });
   }
 }
