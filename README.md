@@ -1,7 +1,13 @@
-# Product Catalog API + Pedidos
+# GestaoPedidos
+
+[![CI](https://github.com/SEU_USUARIO/gestao-pedidos/actions/workflows/ci.yml/badge.svg)](https://github.com/SEU_USUARIO/gestao-pedidos/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gestao-pedidos&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gestao-pedidos)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=gestao-pedidos&metric=coverage)](https://sonarcloud.io/summary/new_code?id=gestao-pedidos)
 
 API REST para catalogo de produtos e pedidos usando Node.js, Express e TypeScript.
 O modulo de pedidos simula a evolucao para arquitetura orientada a eventos, com RabbitMQ, consumidores, idempotencia e read model separado.
+
+> Observacao: a especificacao das aulas cita .NET 8 e Angular 17, mas este workspace esta implementado em Node.js/Express/TypeScript. As praticas de Git Flow, Conventional Commits, SemVer, CI, Quality Gates, release automatica, endpoint de versao e estrutura Angular standalone foram aplicadas preservando a stack real do repositorio.
 
 ## Como rodar
 
@@ -23,6 +29,7 @@ Aplicacao disponivel em `http://localhost:4000`.
 - `GET /api/v1/pedidos?clienteId={clienteId}`
 - `GET /api/v1/pedidos/:id`
 - `GET /api/v1/pedidos/:id/status`
+- `GET /api/v1/version`
 - `GET /health/live`
 - `GET /health/ready`
 - `GET /health`
@@ -192,3 +199,193 @@ npm test
 ```
 
 Os testes validam criacao de pedido, publicacao do evento em memoria, consumo de notificacao, projecao no read model, consulta por ID, status para polling e idempotencia.
+
+## Versionamento e Git Flow
+
+Branches oficiais:
+
+- `main`: codigo pronto para producao e releases SemVer.
+- `develop`: integracao continua das features.
+- `feature/*`: novas funcionalidades.
+- `release/*`: estabilizacao de versao.
+- `hotfix/*`: correcoes urgentes originadas de `main`.
+
+Fluxo recomendado:
+
+```bash
+git checkout develop
+git pull
+git checkout -b feature/pedidos-nova-regra
+git commit -m "feat(pedidos): adicionar nova regra de pedido"
+git push -u origin feature/pedidos-nova-regra
+```
+
+Abra Pull Request para `develop`. Para release, crie `release/x.y.z` a partir de `develop`, estabilize, abra PR para `main` e depois sincronize `develop`.
+
+## Branch Protection Rules
+
+Configure no GitHub:
+
+`main`:
+
+- Require pull request before merging.
+- Require 1 approval.
+- Require status checks to pass.
+- Restrict pushes.
+- Require linear history.
+
+`develop`:
+
+- Require pull request before merging.
+- Require status checks to pass.
+
+Checks obrigatorios sugeridos:
+
+- `Backend - Build e Testes`
+- `Frontend - Build e Lint`
+- `SonarCloud - Quality Gate`
+
+## Conventional Commits
+
+Commitlint e Husky validam as mensagens em `.husky/commit-msg`.
+
+Tipos permitidos:
+
+```text
+feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+```
+
+Escopos permitidos:
+
+```text
+pedidos, pagamentos, catalogo, usuarios, notificacoes, gateway, domain, angular, infra, deps
+```
+
+Exemplos validos:
+
+```bash
+git commit -m "feat(pedidos): adicionar pagamento pix"
+git commit -m "fix(pagamentos): corrigir retry do polly"
+git commit -m "ci(infra): adicionar pipeline github actions"
+```
+
+Regras SemVer:
+
+- `feat` gera MINOR.
+- `fix` e `perf` geram PATCH.
+- `BREAKING CHANGE` ou `!` gera MAJOR.
+
+## Releases
+
+O release automatico usa `release-please`.
+
+Arquivos:
+
+- `release-please-config.json`
+- `.release-please-manifest.json`
+- `.github/workflows/release-please.yml`
+
+Ao receber commits convencionais em `main`, o workflow cria ou atualiza um Pull Request de release com CHANGELOG automatico. Ao fazer merge, gera tag SemVer e GitHub Release.
+
+Secoes do changelog:
+
+- Novas Funcionalidades
+- Correcoes
+- Performance
+- Refatoracoes
+- Documentacao
+
+## CI/CD e Quality Gates
+
+O pipeline `.github/workflows/ci.yml` roda em:
+
+- Pull Requests para `main` e `develop`.
+- Push em `main`.
+
+Jobs:
+
+- `Backend - Build e Testes`: instala dependencias, executa lint, build, testes e cobertura.
+- `Frontend - Build e Lint`: executa `ng lint` e `ng build --configuration production` quando existir `angular.json`.
+- `SonarCloud - Quality Gate`: envia cobertura para SonarCloud e bloqueia falhas do Quality Gate.
+
+Quality Gates esperados:
+
+- Cobertura de linhas >= 70%.
+- 0 falhas de teste.
+- 0 bugs criticos.
+- 0 blocker code smells.
+- Build bem sucedido.
+- Lint sem erros.
+
+Configure os secrets no GitHub:
+
+```text
+SONAR_TOKEN
+```
+
+Atualize `sonar-project.properties` com sua organizacao real do SonarCloud.
+
+## Endpoint de versao
+
+```bash
+curl http://localhost:4000/api/v1/version
+```
+
+Resposta:
+
+```json
+{
+  "version": "0.1.0-dev",
+  "environment": "Development",
+  "buildDate": "2026-06-01T00:00:00.000Z",
+  "commitHash": "local"
+}
+```
+
+Variaveis aceitas no build:
+
+- `APP_VERSION`
+- `BUILD_DATE`
+- `COMMIT_HASH`
+- `GITHUB_SHA`
+
+## Frontend Angular
+
+Foram adicionados arquivos standalone para consumo de versao:
+
+- `src/app/core/services/version.service.ts`
+- `src/app/shared/footer/footer.component.ts`
+- `src/app/shared/footer/footer.component.html`
+- `src/app/shared/footer/footer.component.css`
+
+O proxy Angular aponta `/api` para `http://localhost:5000`, conforme a especificacao das aulas.
+
+## Pipeline local
+
+```bash
+npm ci
+npm run lint
+npm run build
+npm run test:coverage
+docker compose up -d --build
+```
+
+Validar commitlint manualmente:
+
+```bash
+echo "feat(pedidos): adicionar pagamento pix" | npx commitlint
+echo "feature(outro): Mensagem Invalida" | npx commitlint
+```
+
+## Como abrir PR
+
+```bash
+git checkout develop
+git pull
+git checkout -b feature/escopo-descricao
+git add .
+git commit -m "feat(pedidos): descrever mudanca"
+git push -u origin feature/escopo-descricao
+```
+
+No GitHub, abra PR para `develop` e aguarde CI e SonarCloud verdes.

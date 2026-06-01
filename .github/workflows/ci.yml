@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+
+env:
+  DOTNET_VERSION: 8.0.x
+  NODE_VERSION: 20.x
+
+jobs:
+  backend-ci:
+    name: Backend - Build e Testes
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Validar lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Testes com cobertura
+        run: npm run test:coverage -- --ci --reporters=default --reporters=jest-junit
+        env:
+          NODE_ENV: test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Publicar cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            coverage/lcov.info
+            coverage/cobertura-coverage.xml
+
+      - name: Publicar resultados de testes
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: junit.xml
+          if-no-files-found: ignore
+
+  frontend-ci:
+    name: Frontend - Build e Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Angular lint e build quando existir app Angular
+        run: |
+          if [ -f angular.json ]; then
+            npx ng lint
+            npx ng build --configuration production
+          else
+            echo "angular.json nao encontrado; frontend Angular nao existe neste workspace."
+          fi
+
+  sonar-analysis:
+    name: SonarCloud - Quality Gate
+    runs-on: ubuntu-latest
+    needs:
+      - backend-ci
+      - frontend-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Baixar cobertura
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

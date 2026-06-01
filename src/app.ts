@@ -7,6 +7,7 @@ import { httpMetricsMiddleware, metricsHandler } from "./infrastructure/metrics/
 import healthRoutes from "./routes/healthRoutes";
 import productRoutes from "./routes/productRoutes";
 import pedidoRoutes from "./routes/pedidoRoutes";
+import versionRoutes from "./routes/versionRoutes";
 
 const app = express();
 const port = Number(process.env.PORT) || 4000;
@@ -43,6 +44,7 @@ app.get("/metrics", metricsHandler);
 app.use("/health", healthRoutes);
 app.use("/products", productRoutes);
 app.use("/api/v1/pedidos", pedidoRoutes);
+app.use("/api/v1/version", versionRoutes);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ message: "Rota nao encontrada." });

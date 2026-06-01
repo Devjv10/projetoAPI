@@ -1,0 +1,5 @@
+<footer class="app-footer" *ngIf="versionInfo() as info">
+  <span>GestaoPedidos {{ info.version }}</span>
+  <span [class]="badgeClass()">{{ info.environment }}</span>
+  <span *ngIf="info.commitHash">commit {{ info.commitHash | slice: 0:7 }}</span>
+</footer>

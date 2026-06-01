@@ -55,7 +55,7 @@ export class CriarPedidoCommandHandler {
       clienteId: command.clienteId,
       nomeCliente: command.nomeCliente,
       emailCliente: command.emailCliente,
-      status: "Criado",
+      status: "Pendente",
       valorTotal,
       criadoEm,
       itens

@@ -1,0 +1,15 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "gestao-pedidos",
+      "changelog-sections": [
+        { "type": "feat", "section": "Novas Funcionalidades" },
+        { "type": "fix", "section": "Correcoes" },
+        { "type": "perf", "section": "Performance" },
+        { "type": "refactor", "section": "Refatoracoes" },
+        { "type": "docs", "section": "Documentacao" }
+      ]
+    }
+  }
+}

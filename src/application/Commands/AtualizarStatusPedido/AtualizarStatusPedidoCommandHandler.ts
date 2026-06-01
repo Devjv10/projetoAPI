@@ -7,7 +7,7 @@ import { logger } from "../../../infrastructure/logging/logger";
 import { EventBus } from "../../eventBus/EventBus";
 import { AtualizarStatusPedidoCommand } from "./AtualizarStatusPedidoCommand";
 
-const validStatuses: PedidoStatus[] = ["Criado", "Confirmado", "Cancelado"];
+const validStatuses: PedidoStatus[] = ["Pendente", "Criado", "Confirmado", "Entregue", "Cancelado"];
 
 export class AtualizarStatusPedidoCommandHandler {
   constructor(
@@ -28,6 +28,10 @@ export class AtualizarStatusPedidoCommandHandler {
 
     const statusAnterior = pedido.status;
     const alteradoEm = new Date().toISOString();
+
+    if (statusAnterior === "Entregue" && command.novoStatus === "Cancelado") {
+      throw new Error("Pedido entregue nao pode ser cancelado.");
+    }
 
     pedido.status = command.novoStatus;
 

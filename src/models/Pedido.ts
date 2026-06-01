@@ -1,4 +1,4 @@
-export type PedidoStatus = "Criado" | "Confirmado" | "Cancelado";
+export type PedidoStatus = "Pendente" | "Criado" | "Confirmado" | "Entregue" | "Cancelado";
 
 export interface PedidoItem {
   produtoId: number;
